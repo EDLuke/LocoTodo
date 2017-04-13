@@ -1,17 +1,33 @@
-<com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/parallax"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
-    <fragment
+
+    <com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:map="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
-        android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:id="@+id/parallax"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context="com.lukez.locotodo.MapsActivity" />
+        android:layout_height="match_parent">
 
-</com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout>
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/add"
+                android:src="@drawable/ic_add"
+                android:tint="@android:color/holo_red_light"
+                android:background="@android:drawable/screen_background_dark_transparent"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentBottom="true"/>
+        </RelativeLayout>
+
+
+
+    </com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout>
+

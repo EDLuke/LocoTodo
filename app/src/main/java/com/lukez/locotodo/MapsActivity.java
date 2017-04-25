@@ -96,6 +96,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        //Register the onMapClickListener
+        mMap.setOnMapClickListener(onMapClickListener);
+
         //Get my current location
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -109,8 +112,24 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         mMap.setMyLocationEnabled(true);
 
-        Location myLocation = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        LatLng myLocation_latlng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        Location location_gps = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        Location location_wifi = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        Location location_passive = mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+
+        Location[] locations = new Location[]{location_gps, location_wifi, location_passive};
+        Location location_present = location_gps;
+        for(Location location : locations){
+            if(location != null)
+                location_present = location;
+        }
+
+        //If still null, hard code to columbia university
+        if(location_present == null) {
+            location_present.setLatitude(40.80);
+            location_present.setLongitude(73.96);
+        }
+
+        LatLng myLocation_latlng = new LatLng(location_present.getLatitude(), location_present.getLongitude());
 
         //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation_latlng));
@@ -135,4 +154,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Un-register the sensor manager
         mSensorTranslationUpdater.unregisterSensorManager();
     }
+
+    private GoogleMap.OnMapClickListener onMapClickListener = new GoogleMap.OnMapClickListener() {
+        @Override
+        public void onMapClick(LatLng latLng) {
+            mMap.addMarker(new MarkerOptions().position(latLng).title("TEST"));
+        }
+    };
 }

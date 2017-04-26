@@ -1,7 +1,11 @@
 package com.lukez.locotodo;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Point;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -13,6 +17,7 @@ import android.view.View;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -155,10 +160,28 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSensorTranslationUpdater.unregisterSensorManager();
     }
 
+    Bitmap currentSnapshot;
+    int cropSize = 50;
+
+    private GoogleMap.SnapshotReadyCallback snapshotReadyCallback = new GoogleMap.SnapshotReadyCallback() {
+        @Override
+        public void onSnapshotReady(Bitmap bitmap) {
+            currentSnapshot = bitmap;
+        }
+    };
+
     private GoogleMap.OnMapClickListener onMapClickListener = new GoogleMap.OnMapClickListener() {
         @Override
         public void onMapClick(LatLng latLng) {
-            mMap.addMarker(new MarkerOptions().position(latLng).title("TEST"));
+            //mMap.addMarker(new MarkerOptions().position(latLng).title("TEST"));
+            mMap.snapshot(snapshotReadyCallback, currentSnapshot);
+            Point markerPoint = mMap.getProjection().toScreenLocation(latLng);
+            Bitmap resizedSnapshot = Bitmap.createBitmap(currentSnapshot, markerPoint.x - cropSize / 2, markerPoint.y - cropSize / 2, cropSize, cropSize);
+
+            Intent intentAdd = new Intent(getApplicationContext(), AddActivity.class);
+            intentAdd.putExtra("LatLng", latLng);
+            intentAdd.putExtra("BitmapImage", resizedSnapshot);
+            startActivity(intentAdd);
         }
     };
 }

@@ -1,5 +1,6 @@
 <com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/parallax"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -13,15 +14,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ImageButton
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/add"
-            android:src="@drawable/ic_add"
-            android:tint="@android:color/holo_red_light"
-            android:background="@android:drawable/screen_background_dark_transparent"
-            android:layout_alignParentRight="true"
-            android:layout_alignParentBottom="true"/>
+        <com.arlib.floatingsearchview.FloatingSearchView
+            android:id="@+id/floating_search_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:floatingSearch_searchHint="Search your to-do list..."
+            app:floatingSearch_suggestionsListAnimDuration="250"
+            app:floatingSearch_showSearchKey="true"
+            app:floatingSearch_leftActionMode="showHamburger"
+            app:floatingSearch_close_search_on_keyboard_dismiss="true"/>
     </RelativeLayout>
 </com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout>
 

@@ -4,32 +4,40 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.view.View;
 
+import com.arlib.floatingsearchview.FloatingSearchView;
+import com.arlib.floatingsearchview.suggestions.model.SearchSuggestion;
+import com.google.android.gms.identity.intents.Address;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout;
 import com.schibsted.spain.parallaxlayerlayout.SensorTranslationUpdater;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+    static final int ADD_EVENT_REQUEST = 1;
 
     private GoogleMap mMap;
     private SensorTranslationUpdater mSensorTranslationUpdater;
     private ParallaxLayerLayout mParallax;
     private LocationManager mLocationManager;
+    private FloatingSearchView mSearchView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +59,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Get the location manager
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-
         LocationListener locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
@@ -68,6 +75,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         };
 
+        //Link the search view
+        mSearchView = (FloatingSearchView)this.findViewById(R.id.floating_search_view);
+        mSearchView.setOnQueryChangeListener(onQueryChangeListener);
+        mSearchView.setOnLeftMenuClickListener(onLeftMenuClickListener);
+        mSearchView.setOnSearchListener(onSearchListener);
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Check https://developer.android.com/training/permissions/requesting.html
@@ -115,7 +127,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // for ActivityCompat#requestPermissions for more details.
             return;
         }
-        mMap.setMyLocationEnabled(true);
+        //mMap.setMyLocationEnabled(true);
 
         Location location_gps = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         Location location_wifi = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
@@ -153,6 +165,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        if(requestCode == ADD_EVENT_REQUEST){
+            if(resultCode == RESULT_OK){
+                Bundle extras = data.getExtras();
+                //Remove the current marker if we cancel the add activity
+                if(extras.containsKey("Cancel"))
+                    currentMarker.remove();
+            }
+        }
+    }
+
+    @Override
     public void onPause(){
         super.onPause();
 
@@ -160,28 +184,104 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSensorTranslationUpdater.unregisterSensorManager();
     }
 
-    Bitmap currentSnapshot;
-    int cropSize = 50;
+    Marker currentMarker;
+    LatLng currentLatLng;
 
     private GoogleMap.SnapshotReadyCallback snapshotReadyCallback = new GoogleMap.SnapshotReadyCallback() {
         @Override
         public void onSnapshotReady(Bitmap bitmap) {
-            currentSnapshot = bitmap;
+            //Create the dimension of crop image
+            int mapWidth  = bitmap.getWidth();
+            int mapHeight = bitmap.getHeight();
+
+            //Create the resized(cropped snapshot)
+            Bitmap resizedSnapshot = Bitmap.createBitmap(bitmap, 0, mapHeight / 5, mapWidth, mapHeight / 5 * 3);
+
+            //Compress the bitmap to byte array
+            ByteArrayOutputStream baoStream = new ByteArrayOutputStream();
+            resizedSnapshot.compress(Bitmap.CompressFormat.PNG, 100, baoStream);
+            byte[] compressedBytes = baoStream.toByteArray();
+
+            //Start the activity
+            Intent intentAdd = new Intent(getApplicationContext(), AddActivity.class);
+            intentAdd.putExtra("LatLng", currentLatLng);
+            intentAdd.putExtra("BMP", compressedBytes);
+            startActivityForResult(intentAdd, ADD_EVENT_REQUEST);
         }
     };
+
+    private List<android.location.Address> searchAddress(String address){
+        Geocoder geocoder = new Geocoder(getApplicationContext());
+        List<android.location.Address> addressList = null;
+        try {
+            addressList = geocoder.getFromLocationName(address, 10);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return addressList;
+    }
+
+    private void onMapClickHelper(LatLng latLng){
+        //Add the temporary marker
+        currentMarker = mMap.addMarker(new MarkerOptions().position(latLng));
+
+        //Store the latlong
+        currentLatLng = latLng;
+
+        //Center map to the marker's location
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng), new GoogleMap.CancelableCallback() {
+            @Override
+            public void onFinish() {
+                //Take the snapshot
+                mMap.snapshot(snapshotReadyCallback);
+            }
+
+            @Override
+            public void onCancel() {
+
+            }
+        });
+    }
 
     private GoogleMap.OnMapClickListener onMapClickListener = new GoogleMap.OnMapClickListener() {
         @Override
         public void onMapClick(LatLng latLng) {
-            //mMap.addMarker(new MarkerOptions().position(latLng).title("TEST"));
-            mMap.snapshot(snapshotReadyCallback, currentSnapshot);
-            Point markerPoint = mMap.getProjection().toScreenLocation(latLng);
-            Bitmap resizedSnapshot = Bitmap.createBitmap(currentSnapshot, markerPoint.x - cropSize / 2, markerPoint.y - cropSize / 2, cropSize, cropSize);
+            onMapClickHelper(latLng);
+        }
+    };
 
-            Intent intentAdd = new Intent(getApplicationContext(), AddActivity.class);
-            intentAdd.putExtra("LatLng", latLng);
-            intentAdd.putExtra("BitmapImage", resizedSnapshot);
-            startActivity(intentAdd);
+    private FloatingSearchView.OnQueryChangeListener onQueryChangeListener = new FloatingSearchView.OnQueryChangeListener() {
+        @Override
+        public void onSearchTextChanged(String oldQuery, String newQuery) {
+
+
+
+        }
+    };
+
+    private FloatingSearchView.OnSearchListener onSearchListener = new FloatingSearchView.OnSearchListener() {
+        @Override
+        public void onSuggestionClicked(SearchSuggestion searchSuggestion) {
+
+        }
+
+        @Override
+        public void onSearchAction(String currentQuery) {
+            android.location.Address address = (searchAddress(currentQuery)).get(0);
+            LatLng latlng = new LatLng(address.getLatitude(), address.getLongitude());
+            onMapClickHelper(latlng);
+        }
+    };
+
+    private FloatingSearchView.OnLeftMenuClickListener onLeftMenuClickListener = new FloatingSearchView.OnLeftMenuClickListener() {
+        @Override
+        public void onMenuOpened() {
+
+        }
+
+        @Override
+        public void onMenuClosed() {
+
         }
     };
 }

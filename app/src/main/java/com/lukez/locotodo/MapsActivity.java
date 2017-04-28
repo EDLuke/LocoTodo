@@ -11,10 +11,15 @@ import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.Toast;
 
 import com.arlib.floatingsearchview.FloatingSearchView;
 import com.arlib.floatingsearchview.suggestions.model.SearchSuggestion;
@@ -44,6 +49,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ParallaxLayerLayout mParallax;
     private FloatingSearchView mSearchView;
     private LocationReceiver mLocationReceiver;
+    private FloatingActionButton mFABMain, mFABAdd, mFABView;
+
+    //Animation for the FABs
+    private Animation fab_open, fab_close, rotate_downward, rotate_upward;
+    private boolean isFABMainOpen = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,11 +73,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSensorTranslationUpdater = new SensorTranslationUpdater(this);
         mParallax.setTranslationUpdater(mSensorTranslationUpdater);
 
-         //Link the search view
-        mSearchView = (FloatingSearchView)this.findViewById(R.id.floating_search_view);
+        //Link the search view
+        mSearchView = (FloatingSearchView) this.findViewById(R.id.floating_search_view);
         mSearchView.setOnQueryChangeListener(onQueryChangeListener);
         mSearchView.setOnLeftMenuClickListener(onLeftMenuClickListener);
         mSearchView.setOnSearchListener(onSearchListener);
+
+        //Link the FABs
+        mFABMain = (FloatingActionButton) this.findViewById(R.id.floating_main_btn);
+        mFABMain.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onClickFAB(view);
+            }
+        });
+        mFABAdd  = (FloatingActionButton) this.findViewById(R.id.floating_add_btn);
+        mFABView = (FloatingActionButton) this.findViewById(R.id.floating_view_btn);
+        fab_open        = AnimationUtils.loadAnimation(this, R.anim.fab_open);
+        fab_close       = AnimationUtils.loadAnimation(this, R.anim.fab_close);
+        rotate_downward = AnimationUtils.loadAnimation(this, R.anim.rotate_downward);
+        rotate_upward   = AnimationUtils.loadAnimation(this, R.anim.rotate_upward);
 
         //Register the location broadcast receiver
         mLocationReceiver = new LocationReceiver();
@@ -97,7 +122,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Register the onMapClickListener
         mMap.setOnMapClickListener(onMapClickListener);
 
-        if(currentLocation == null)
+        if (currentLocation == null)
             return;
 
         LatLng myLocation_latlng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
@@ -109,27 +134,30 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onResume(){
+    public void onResume() {
         super.onResume();
 
         //Re-register the sensor manager
         mSensorTranslationUpdater.registerSensorManager();
+
+        //Re-register the broadcast receiver
+        LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver, new IntentFilter(LOCATION_UPDATE_ACTION));
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
-        if(requestCode == ADD_EVENT_REQUEST){
-            if(resultCode == RESULT_OK){
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == ADD_EVENT_REQUEST) {
+            if (resultCode == RESULT_OK) {
                 Bundle extras = data.getExtras();
                 //Remove the current marker if we cancel the add activity
-                if(extras.containsKey("Cancel"))
+                if (extras.containsKey("Cancel"))
                     currentMarker.remove();
             }
         }
     }
 
     @Override
-    public void onPause(){
+    public void onPause() {
         super.onPause();
 
         //Un-register the sensor manager
@@ -138,6 +166,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     @Override
     public void onStop() {
+        super.onStop();
+
         //Un-register the broadcast receiver
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
     }
@@ -150,7 +180,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         @Override
         public void onSnapshotReady(Bitmap bitmap) {
             //Create the dimension of crop image
-            int mapWidth  = bitmap.getWidth();
+            int mapWidth = bitmap.getWidth();
             int mapHeight = bitmap.getHeight();
 
             //Create the resized(cropped snapshot)
@@ -169,7 +199,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
-    private List<android.location.Address> searchAddress(String address){
+    private List<android.location.Address> searchAddress(String address) {
         Geocoder geocoder = new Geocoder(getApplicationContext());
         List<android.location.Address> addressList = null;
         try {
@@ -180,7 +210,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         return addressList;
     }
 
-    private void onMapClickHelper(LatLng latLng){
+    private void onMapClickHelper(LatLng latLng) {
         //Add the temporary marker
         currentMarker = mMap.addMarker(new MarkerOptions().position(latLng));
 
@@ -214,7 +244,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         public void onSearchTextChanged(String oldQuery, String newQuery) {
 
 
-
         }
     };
 
@@ -244,24 +273,42 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     };
 
-    protected void startMapSync(){
+    protected void startMapSync() {
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
 
-    public class LocationReceiver extends BroadcastReceiver{
+    public class LocationReceiver extends BroadcastReceiver {
         @Override
-        public void onReceive(Context context, Intent intent){
-            if(currentLocation == null){
+        public void onReceive(Context context, Intent intent) {
+            if (currentLocation == null) {
                 currentLocation = (Location) intent.getExtras().get("Location");
                 startMapSync();
-            }
-            else {
+            } else {
                 currentLocation = (Location) intent.getExtras().get("Location");
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())));
+                if (mMap != null)
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())));
             }
         }
+    }
+
+    public void onClickFAB(View v) {
+        if(isFABMainOpen){
+            mFABMain.startAnimation(rotate_downward);
+            mFABAdd.startAnimation(fab_close);
+            mFABView.startAnimation(fab_close);
+            mFABAdd.setClickable(false);
+            mFABView.setClickable(false);
+        }
+        else{
+            mFABMain.startAnimation(rotate_upward);
+            mFABAdd.startAnimation(fab_open);
+            mFABView.startAnimation(fab_open);
+            mFABAdd.setClickable(true);
+            mFABView.setClickable(true);
+        }
+        isFABMainOpen = !isFABMainOpen;
     }
 }

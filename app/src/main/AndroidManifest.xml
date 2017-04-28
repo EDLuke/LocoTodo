@@ -24,6 +24,8 @@
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <receiver android:name=".LocationReceiver" />
         </activity>
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
@@ -41,6 +43,13 @@
             android:name=".AddActivity"
             android:label="@string/title_activity_add">
         </activity>
+
+        <service
+            android:name="com.lukez.locoto_service.LocationUpdateService"
+            android:enabled="true"
+            android:exported="true">
+        </service>
+
     </application>
 
 </manifest>

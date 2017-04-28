@@ -1,7 +1,9 @@
 package com.lukez.locotodo;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Point;
@@ -12,6 +14,7 @@ import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.content.LocalBroadcastManager;
 
 import com.arlib.floatingsearchview.FloatingSearchView;
 import com.arlib.floatingsearchview.suggestions.model.SearchSuggestion;
@@ -23,6 +26,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.lukez.locoto_service.LocationUpdateService;
 import com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout;
 import com.schibsted.spain.parallaxlayerlayout.SensorTranslationUpdater;
 
@@ -30,14 +34,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import static com.lukez.locoto_service.LocationUpdateService.LOCATION_UPDATE_ACTION;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     static final int ADD_EVENT_REQUEST = 1;
 
     private GoogleMap mMap;
     private SensorTranslationUpdater mSensorTranslationUpdater;
     private ParallaxLayerLayout mParallax;
-    private LocationManager mLocationManager;
     private FloatingSearchView mSearchView;
+    private LocationReceiver mLocationReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,46 +63,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSensorTranslationUpdater = new SensorTranslationUpdater(this);
         mParallax.setTranslationUpdater(mSensorTranslationUpdater);
 
-        //Get the location manager
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        LocationListener locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location location) {
-
-            }
-
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-            }
-
-            public void onProviderEnabled(String provider) {
-            }
-
-            public void onProviderDisabled(String provider) {
-            }
-        };
-
-        //Link the search view
+         //Link the search view
         mSearchView = (FloatingSearchView)this.findViewById(R.id.floating_search_view);
         mSearchView.setOnQueryChangeListener(onQueryChangeListener);
         mSearchView.setOnLeftMenuClickListener(onLeftMenuClickListener);
         mSearchView.setOnSearchListener(onSearchListener);
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Check https://developer.android.com/training/permissions/requesting.html
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+        //Register the location broadcast receiver
+        mLocationReceiver = new LocationReceiver();
+        LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver, new IntentFilter(LOCATION_UPDATE_ACTION));
 
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        //Start the location update activity
+        Intent locationUpdateService = new Intent(this, LocationUpdateService.class);
+        this.startService(locationUpdateService);
+
+
     }
 
 
@@ -116,42 +97,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Register the onMapClickListener
         mMap.setOnMapClickListener(onMapClickListener);
 
-        //Get my current location
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+        if(currentLocation == null)
             return;
-        }
-        //mMap.setMyLocationEnabled(true);
 
-        Location location_gps = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        Location location_wifi = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-        Location location_passive = mLocationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-
-        Location[] locations = new Location[]{location_gps, location_wifi, location_passive};
-        Location location_present = location_gps;
-        for(Location location : locations){
-            if(location != null)
-                location_present = location;
-        }
-
-        //If still null, hard code to columbia university
-        if(location_present == null) {
-            location_present.setLatitude(40.80);
-            location_present.setLongitude(73.96);
-        }
-
-        LatLng myLocation_latlng = new LatLng(location_present.getLatitude(), location_present.getLongitude());
+        LatLng myLocation_latlng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
 
         //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation_latlng));
-
-
         mMap.moveCamera(CameraUpdateFactory.zoomTo(15.0f));
 
     }
@@ -184,8 +136,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mSensorTranslationUpdater.unregisterSensorManager();
     }
 
+    @Override
+    public void onStop() {
+        //Un-register the broadcast receiver
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mLocationReceiver);
+    }
+
     Marker currentMarker;
     LatLng currentLatLng;
+    Location currentLocation;
 
     private GoogleMap.SnapshotReadyCallback snapshotReadyCallback = new GoogleMap.SnapshotReadyCallback() {
         @Override
@@ -284,4 +243,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         }
     };
+
+    protected void startMapSync(){
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+    }
+
+    public class LocationReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent){
+            if(currentLocation == null){
+                currentLocation = (Location) intent.getExtras().get("Location");
+                startMapSync();
+            }
+            else {
+                currentLocation = (Location) intent.getExtras().get("Location");
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())));
+            }
+        }
+    }
 }

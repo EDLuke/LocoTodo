@@ -4,26 +4,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Point;
 import android.location.Geocoder;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.LocalBroadcastManager;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Toast;
 
 import com.arlib.floatingsearchview.FloatingSearchView;
 import com.arlib.floatingsearchview.suggestions.model.SearchSuggestion;
-import com.google.android.gms.identity.intents.Address;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -84,11 +77,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mFABMain.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                onClickFAB(view);
+                onClickFABMain(view);
             }
         });
         mFABAdd  = (FloatingActionButton) this.findViewById(R.id.floating_add_btn);
+        mFABAdd.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onClickFABAdd(view);
+            }
+        });
         mFABView = (FloatingActionButton) this.findViewById(R.id.floating_view_btn);
+        mFABView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onClickFABView(view);
+            }
+        });
         fab_open        = AnimationUtils.loadAnimation(this, R.anim.fab_open);
         fab_close       = AnimationUtils.loadAnimation(this, R.anim.fab_close);
         rotate_downward = AnimationUtils.loadAnimation(this, R.anim.rotate_downward);
@@ -148,10 +153,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == ADD_EVENT_REQUEST) {
             if (resultCode == RESULT_OK) {
-                Bundle extras = data.getExtras();
-                //Remove the current marker if we cancel the add activity
-                if (extras.containsKey("Cancel"))
-                    currentMarker.remove();
+                if(data != null) {
+                    Bundle extras = data.getExtras();
+                    //Remove the current marker if we cancel the add activity
+                    if (extras != null && extras.containsKey("Cancel"))
+                        currentMarker.remove();
+                }
             }
         }
     }
@@ -294,7 +301,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
     }
 
-    public void onClickFAB(View v) {
+    public void onClickFABMain(View v) {
         if(isFABMainOpen){
             mFABMain.startAnimation(rotate_downward);
             mFABAdd.startAnimation(fab_close);
@@ -310,5 +317,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mFABView.setClickable(true);
         }
         isFABMainOpen = !isFABMainOpen;
+    }
+
+    public void onClickFABView(View v){
+        Intent intent = new Intent(getApplicationContext(), EventListActivity.class);
+        startActivity(intent);
+    }
+
+    public void onClickFABAdd(View v){
+
     }
 }

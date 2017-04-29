@@ -32,6 +32,11 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
   public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
 
   /**
+   * The desired distance change for location updates. Inexact. Updates may be more or less frequent.
+   */
+  public static final long UPDATE_DISTANCE_IN_METERS = 15;
+
+  /**
    * The fastest rate for active location updates. Exact. Updates will never be more frequent
    * than this value.
    */
@@ -161,7 +166,7 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
       // for ActivityCompat#requestPermissions for more details.
       return;
     }
-    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS, 0, locationListener);
+    mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS, UPDATE_DISTANCE_IN_METERS , locationListener);
 
   }
 

@@ -25,7 +25,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <receiver android:name=".LocationReceiver" />
+            <receiver android:name=".LocationReceiver"/>
         </activity>
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
@@ -50,6 +50,8 @@
             android:exported="true">
         </service>
 
+        <activity android:name=".EventListActivity">
+        </activity>
     </application>
 
 </manifest>

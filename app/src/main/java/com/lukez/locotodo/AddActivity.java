@@ -77,5 +77,7 @@ public class AddActivity extends Activity {
     values.put(LocoTodoContract.TodoEntry.COLUMN_NAME_LNG, lng);
 
     long newRowId = db.insert(LocoTodoContract.TodoEntry.TABLE_NAME, null, values);
+    setResult(RESULT_OK);
+    finish();
   }
 }

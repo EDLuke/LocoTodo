@@ -79,7 +79,12 @@ public class AddActivity extends Activity {
 
     long newRowId = db.insert(LocoTodoContract.TodoEntry.TABLE_NAME, null, values);
     db.close();
-    setResult(RESULT_OK);
+
+    Intent intent = new Intent();
+    intent.putExtra("Event", event);
+    intent.putExtra("Location", location);
+    setResult(RESULT_OK, intent);
+
     finish();
   }
 }

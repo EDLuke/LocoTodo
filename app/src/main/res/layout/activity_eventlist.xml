@@ -5,6 +5,7 @@
     android:id="@+id/activity_eventlist"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:windowActionBar="false"
     tools:context="com.lukez.locotodo.EventListActivity"
     android:orientation="vertical"
     android:weightSum="1">

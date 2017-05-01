@@ -175,6 +175,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     //Remove the current marker if we cancel the add activity
                     if (extras != null && extras.containsKey("Cancel"))
                         currentMarker.remove();
+                    else if(extras != null && extras.containsKey("Event")){
+                        currentMarker.setTitle(extras.getString("Location"));
+                        currentMarker.setSnippet(extras.getString("Event"));
+                        currentMarker.showInfoWindow();
+                    }
                 }
             }
         }
@@ -224,7 +229,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             //Compress the bitmap to byte array
             ByteArrayOutputStream baoStream = new ByteArrayOutputStream();
-            resizedSnapshot.compress(Bitmap.CompressFormat.PNG, 100, baoStream);
+            resizedSnapshot.compress(Bitmap.CompressFormat.JPEG, 50, baoStream);
             byte[] compressedBytes = baoStream.toByteArray();
 
             //Start the activity
@@ -255,7 +260,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Center map to the marker's location
         //TODO: Low resolution problem on snapshots
-        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng), 3000, new GoogleMap.CancelableCallback() {
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng), 1500, new GoogleMap.CancelableCallback() {
             @Override
             public void onFinish() {
                 mMap.snapshot(snapshotReadyCallback);

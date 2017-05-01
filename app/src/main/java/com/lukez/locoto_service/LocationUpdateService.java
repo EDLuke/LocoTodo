@@ -80,7 +80,7 @@ public class LocationUpdateService extends Service implements GoogleApiClient.Co
   public int onStartCommand(Intent intent, int flags, int startId) {
     Log.d(LOG_TAG, "Service initializing");
 
-    if (mGoogleApiClient.isConnected())
+    if (mGoogleApiClient != null && mGoogleApiClient.isConnected())
       startLocationUpdates();
 
     sendBroadCast();

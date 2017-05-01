@@ -86,4 +86,14 @@
         android:layout_above="@+id/txfEvent"
         android:layout_alignStart="@+id/txfEvent"/>
 
+    <Button
+        android:text="Delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:id="@+id/btnDelete"
+        android:layout_alignTop="@+id/btnCancel"
+        android:layout_alignBottom="@+id/btnCancel"
+        android:visibility="invisible"/>
+
 </RelativeLayout>

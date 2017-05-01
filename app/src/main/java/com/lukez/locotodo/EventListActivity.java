@@ -40,7 +40,8 @@ public class EventListActivity extends AppCompatActivity {
         String location  = cursor.getString(1);
         float lat = cursor.getFloat(2);
         float lng = cursor.getFloat(3);
-        events.add(new LocoTodoEvent(location, eventName, new LatLng(lat, lng)));
+        String id = cursor.getString(0);
+        events.add(new LocoTodoEvent(location, eventName, new LatLng(lat, lng), id));
       }
     }
 

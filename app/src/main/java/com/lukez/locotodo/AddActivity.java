@@ -31,9 +31,11 @@ public class AddActivity extends Activity {
 
     //Set the map screen shot
     byte[] bytes = intent.getByteArrayExtra("BMP");
-    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-    ImageView imgView = (ImageView)findViewById(R.id.imgSnap);
-    imgView.setImageBitmap(bitmap);
+    if(bytes != null) {
+      Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+      ImageView imgView = (ImageView) findViewById(R.id.imgSnap);
+      imgView.setImageBitmap(bitmap);
+    }
 
     //Update text
     LatLng latLng = intent.getParcelableExtra("LatLng");

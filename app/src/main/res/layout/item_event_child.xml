@@ -25,11 +25,12 @@
     <ImageButton
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        app:srcCompat="@drawable/ic_mode_edit_black_24px"
-        android:id="@+id/imbEdit"
+        app:srcCompat="@drawable/cast_ic_notification_disconnect"
+        android:id="@+id/imgDelete"
         android:background="@android:drawable/screen_background_light_transparent"
         android:layout_alignParentTop="true"
         android:layout_toStartOf="@+id/imbNav"
         android:maxHeight="2dp"
-        android:scaleType="centerInside"/>
+        android:scaleType="centerInside"
+        android:tint="@color/black"/>
 </RelativeLayout>

@@ -10,6 +10,7 @@ import java.util.List;
  */
 
 public class LocoTodoEvent implements Parent<LocoTodoEvent> {
+  private String mID;
   private String mLocation;
   private String mEvent;
   private LatLng mLatlng;
@@ -38,10 +39,15 @@ public class LocoTodoEvent implements Parent<LocoTodoEvent> {
     this.mLatlng = mLatlng;
   }
 
-  public LocoTodoEvent(String location, String event, LatLng latlng){
+  public String getID(){
+    return mID;
+  }
+
+  public LocoTodoEvent(String location, String event, LatLng latlng, String id){
     mLocation = location;
     mEvent = event;
     mLatlng = latlng;
+    mID = id;
   }
 
 

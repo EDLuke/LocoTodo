@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.location.Geocoder;
 import android.location.Location;
@@ -25,14 +27,18 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.lukez.locoto_service.LocationUpdateService;
+import com.lukez.locotodo_db.LocoTodoDbHelper;
+import com.lukez.locotodo_db.LocoTodoEvent;
 import com.schibsted.spain.parallaxlayerlayout.ParallaxLayerLayout;
 import com.schibsted.spain.parallaxlayerlayout.SensorTranslationUpdater;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.lukez.locoto_service.LocationUpdateService.LOCATION_UPDATE_ACTION;
+import static com.lukez.locotodo_db.LocoTodoContract.TodoEntry.TABLE_NAME;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     static final int ADD_EVENT_REQUEST = 1;
@@ -42,7 +48,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private ParallaxLayerLayout mParallax;
     private FloatingSearchView mSearchView;
     private LocationReceiver mLocationReceiver;
-    private FloatingActionButton mFABMain, mFABAdd, mFABView;
+    private FloatingActionButton mFABMain, mFABAdd, mFABView, mFABMyLoc;
 
     //Animation for the FABs
     private Animation fab_open, fab_close, rotate_downward, rotate_upward;
@@ -94,6 +100,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 onClickFABView(view);
             }
         });
+        mFABMyLoc = (FloatingActionButton) this.findViewById(R.id.floating_myloc_btn);
+        mFABMyLoc.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onClickFABMyLoc(view);
+            }
+        });
+
         fab_open        = AnimationUtils.loadAnimation(this, R.anim.fab_open);
         fab_close       = AnimationUtils.loadAnimation(this, R.anim.fab_close);
         rotate_downward = AnimationUtils.loadAnimation(this, R.anim.rotate_downward);
@@ -106,8 +120,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Start the location update activity
         Intent locationUpdateService = new Intent(this, LocationUpdateService.class);
         this.startService(locationUpdateService);
-
-
     }
 
 
@@ -127,15 +139,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         //Register the onMapClickListener
         mMap.setOnMapClickListener(onMapClickListener);
 
+        //Disable the tool bar
+        mMap.getUiSettings().setMapToolbarEnabled(false);
+
         if (currentLocation == null)
             return;
 
         LatLng myLocation_latlng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
 
-        //mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(myLocation_latlng));
         mMap.moveCamera(CameraUpdateFactory.zoomTo(15.0f));
 
+        //Show the markers
+        showAllMarker();
     }
 
     @Override
@@ -147,6 +163,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Re-register the broadcast receiver
         LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver, new IntentFilter(LOCATION_UPDATE_ACTION));
+
+        //Re-add all markers
+        if(mMap != null) {
+            mMap.clear();
+            showAllMarker();
+        }
     }
 
     @Override
@@ -225,10 +247,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         currentLatLng = latLng;
 
         //Center map to the marker's location
-        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng), new GoogleMap.CancelableCallback() {
+        //TODO: Low resolution problem on snapshots
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng), 3000, new GoogleMap.CancelableCallback() {
             @Override
             public void onFinish() {
-                //Take the snapshot
                 mMap.snapshot(snapshotReadyCallback);
             }
 
@@ -293,11 +315,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             if (currentLocation == null) {
                 currentLocation = (Location) intent.getExtras().get("Location");
                 startMapSync();
-            } else {
+            } else
                 currentLocation = (Location) intent.getExtras().get("Location");
-                if (mMap != null)
-                    mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())));
-            }
+
         }
     }
 
@@ -306,15 +326,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mFABMain.startAnimation(rotate_downward);
             mFABAdd.startAnimation(fab_close);
             mFABView.startAnimation(fab_close);
+            mFABMyLoc.startAnimation(fab_close);
             mFABAdd.setClickable(false);
             mFABView.setClickable(false);
+            mFABMyLoc.setClickable(false);
         }
         else{
             mFABMain.startAnimation(rotate_upward);
             mFABAdd.startAnimation(fab_open);
             mFABView.startAnimation(fab_open);
+            mFABMyLoc.startAnimation(fab_open);
             mFABAdd.setClickable(true);
             mFABView.setClickable(true);
+            mFABMyLoc.setClickable(true);
         }
         isFABMainOpen = !isFABMainOpen;
     }
@@ -325,6 +349,35 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     }
 
     public void onClickFABAdd(View v){
+        onMapClickHelper(mMap.getCameraPosition().target);
+    }
 
+    public void onClickFABMyLoc(View v){
+        if (mMap != null)
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude())));
+    }
+
+    public void showAllMarker(){
+        ArrayList<LocoTodoEvent> events = new ArrayList<>();
+
+        //Populate from sqllite database
+        LocoTodoDbHelper dbHelper = new LocoTodoDbHelper(this);
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        Cursor cursor = db.rawQuery("SELECT * FROM " + TABLE_NAME, null);
+        if(cursor.moveToFirst()) {
+            while (cursor.moveToNext()) {
+                String eventName = cursor.getString(4);
+                String location  = cursor.getString(1);
+                float lat = cursor.getFloat(2);
+                float lng = cursor.getFloat(3);
+                String id = cursor.getString(0);
+                events.add(new LocoTodoEvent(location, eventName, new LatLng(lat, lng), id));
+            }
+        }
+
+        for(LocoTodoEvent event : events) {
+            Marker marker = mMap.addMarker(new MarkerOptions().title(event.getLocation()).snippet(event.getEvent()).position(event.getLatlng()));
+            marker.showInfoWindow();
+        }
     }
 }

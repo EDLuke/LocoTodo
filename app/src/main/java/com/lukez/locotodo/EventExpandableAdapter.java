@@ -22,12 +22,13 @@ import java.util.ArrayList;
 public class EventExpandableAdapter extends ExpandableRecyclerAdapter<LocoTodoEvent, LocoTodoEvent, EventParentViewHolder, EventChildViewHolder> {
   LayoutInflater mInflater;
   protected ImageButton mImbDelete;
+  private EventListActivity mParentActivity;
 
   public EventExpandableAdapter(Context context, ArrayList parentEvents){
     super(parentEvents);
 
-
     mInflater = LayoutInflater.from(context);
+    mParentActivity = (EventListActivity) context;
   }
 
   @Override
@@ -65,6 +66,7 @@ public class EventExpandableAdapter extends ExpandableRecyclerAdapter<LocoTodoEv
                 new String[]{String.valueOf(event.getID())});
         db.close();
         notifyParentRemoved(parentPosition);
+        mParentActivity.notifyEventsChanged();
       }
     });
   }

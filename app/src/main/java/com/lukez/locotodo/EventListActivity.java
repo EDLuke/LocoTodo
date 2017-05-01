@@ -1,5 +1,6 @@
 package com.lukez.locotodo;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
@@ -18,6 +19,7 @@ import static com.lukez.locotodo_db.LocoTodoContract.TodoEntry.TABLE_NAME;
 public class EventListActivity extends AppCompatActivity {
   private RecyclerView mRecyclerView;
   private EventExpandableAdapter mAdatper;
+  private boolean eventsChanged;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -44,9 +46,28 @@ public class EventListActivity extends AppCompatActivity {
         events.add(new LocoTodoEvent(location, eventName, new LatLng(lat, lng), id));
       }
     }
+    db.close();
 
     mAdatper = new EventExpandableAdapter(this, events);
     mRecyclerView.setAdapter(mAdatper);
     mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+  }
+
+  @Override
+  public void onResume(){
+    eventsChanged = false;
+    super.onResume();
+  }
+
+  @Override
+  public void onBackPressed(){
+    Intent intent = new Intent();
+    intent.putExtra("Changed", eventsChanged);
+    setResult(RESULT_OK, intent);
+    super.onBackPressed();
+  }
+
+  public void notifyEventsChanged(){
+    eventsChanged = true;
   }
 }

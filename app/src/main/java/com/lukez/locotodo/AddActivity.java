@@ -60,7 +60,6 @@ public class AddActivity extends Activity {
     onBackPressed();
   }
 
-
   public void onClickAdd(View v) {
     //Initialize db helper
     LocoTodoDbHelper dbHelper = new LocoTodoDbHelper(getApplicationContext());
@@ -79,6 +78,7 @@ public class AddActivity extends Activity {
     values.put(LocoTodoContract.TodoEntry.COLUMN_NAME_LNG, lng);
 
     long newRowId = db.insert(LocoTodoContract.TodoEntry.TABLE_NAME, null, values);
+    db.close();
     setResult(RESULT_OK);
     finish();
   }

@@ -42,6 +42,7 @@ import static com.lukez.locotodo_db.LocoTodoContract.TodoEntry.TABLE_NAME;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
     static final int ADD_EVENT_REQUEST = 1;
+    static final int REMOVED_EVENT_REQUEST = 2;
 
     private GoogleMap mMap;
     private SensorTranslationUpdater mSensorTranslationUpdater;
@@ -163,12 +164,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         //Re-register the broadcast receiver
         LocalBroadcastManager.getInstance(this).registerReceiver(mLocationReceiver, new IntentFilter(LOCATION_UPDATE_ACTION));
-
-        //Re-add all markers
-        if(mMap != null) {
-            mMap.clear();
-            showAllMarker();
-        }
     }
 
     @Override
@@ -180,6 +175,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     //Remove the current marker if we cancel the add activity
                     if (extras != null && extras.containsKey("Cancel"))
                         currentMarker.remove();
+                }
+            }
+        }
+        else if(requestCode == REMOVED_EVENT_REQUEST){
+            if (resultCode == RESULT_OK) {
+                if(data != null) {
+                    Bundle extras = data.getExtras();
+                    //Re-add all markers if we cancel the add activity
+                    if (extras != null && extras.containsKey("Changed") && extras.getBoolean("Changed")) {
+                        mMap.clear();
+                        showAllMarker();
+                    }
                 }
             }
         }
@@ -345,7 +352,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     public void onClickFABView(View v){
         Intent intent = new Intent(getApplicationContext(), EventListActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent, REMOVED_EVENT_REQUEST);
     }
 
     public void onClickFABAdd(View v){
@@ -374,6 +381,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 events.add(new LocoTodoEvent(location, eventName, new LatLng(lat, lng), id));
             }
         }
+
+        db.close();
 
         for(LocoTodoEvent event : events) {
             Marker marker = mMap.addMarker(new MarkerOptions().title(event.getLocation()).snippet(event.getEvent()).position(event.getLatlng()));
